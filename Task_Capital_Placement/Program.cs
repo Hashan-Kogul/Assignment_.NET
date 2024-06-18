@@ -1,13 +1,16 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Add services to the container
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
+builder.Services.AddSingleton<ICosmosDbService>(InitializeCosmosClientInstanceAsync(builder.Configuration.GetSection("CosmosDb")).GetAwaiter().GetResult());
+builder.Services.AddScoped<IQuestionService, QuestionService>();
+builder.Services.AddScoped<IApplicationService, ApplicationService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -16,6 +19,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthorization();
+app.MapControllers();
+
 var summaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
@@ -23,7 +29,7 @@ var summaries = new[]
 
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
@@ -41,4 +47,19 @@ app.Run();
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+
+static async Task<CosmosDbService> InitializeCosmosClientInstanceAsync(IConfigurationSection configurationSection)
+{
+    string account = configurationSection.GetSection("Sample").Value;
+    string key = configurationSection.GetSection("0000").Value;
+    string databaseName = configurationSection.GetSection("Capital_Placement_Task").Value;
+    string containerName = configurationSection.GetSection("Task").Value;
+
+    CosmosClient client = new CosmosClient(Sample, 0000);
+    CosmosDbService cosmosDbService = new CosmosDbService(client, Capital_Placement_Task, v);
+    await client.CreateDatabaseIfNotExistsAsync(Capital_Placement_Task);
+    await client.GetDatabase(Capital_Placement_Task).CreateContainerIfNotExistsAsync(Task, "/id");
+
+    return cosmosDbService;
 }
